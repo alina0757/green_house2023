@@ -109,7 +109,7 @@ void readSendData() {
   float adc0 = (float)ads.readADC_SingleEnded(0) * 6.144 * 16;
   float adc1 = (float)ads.readADC_SingleEnded(1) * 6.144 * 16;
 
-  float t1 = ((adc1 / 1000)); //1023.0 * 5.0) - 0.5) * 100.0;
+  float t1 = ((adc1 / 1000));
   float h1 = map(adc0, air_value, water_value, moisture_0, moisture_100);
 
   Blynk.virtualWrite(V7, t1); delay(25);        // Отправка данных на сервер Blynk  Температура почвы  // Soil temperature data send
