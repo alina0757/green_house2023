@@ -11,7 +11,7 @@
 #include <Wire.h>
 #include <SPI.h>                       // конфигурация блинка // Blynk configuration 
 
-#include <Servo.h>                     // конфигурация сервомотора // servo configuration
+#include <ESP32_Servo.h>                      // конфигурация сервомотора // servo configuration
 
 #include <FastLED.h>                   // конфигурация матрицы // LED matrix configuration   
 #include <FastLED_GFX.h>
