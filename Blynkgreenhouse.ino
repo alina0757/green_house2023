@@ -15,6 +15,7 @@
 #include <FastLED.h>                   // конфигурация матрицы  
 #include <FastLED_GFX.h>
 #include <FastLEDMatrix.h>
+
 #define NUM_LEDS 64                    // количество светодиодов в матрице  
 CRGB leds[NUM_LEDS];                   // определяем матрицу (FastLED библиотека) 
 #define LED_PIN             18         // пин к которому подключена матрица 
