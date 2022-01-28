@@ -25,9 +25,9 @@ CRGB leds[NUM_LEDS];                   // определяем матрицу (F
 #define  pump   16                     // пин насоса              
 #define  wind   17                     // пин вентилятора           
 
-char ssid[] = "MGBot";                            // Логин Wi-Fi    
-char pass[] = "Terminator812";                    // Пароль от Wi-Fi    
-char auth[] = "4a7c974100bf4153a9f301c0854988fd"; // Токен 
+char ssid[] = "XXXX";                            // Логин Wi-Fi    
+char pass[] = "XXXXXXXXXXXX";                    // Пароль от Wi-Fi    
+char auth[] = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXxX"; // Токен 
 IPAddress blynk_ip(139, 59, 206, 133);            // конфигурация блинка 
 
 Servo myservo;                                                          
