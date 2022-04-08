@@ -9,7 +9,7 @@
 #include <FastLEDMatrix.h>
 #define NUM_LEDS 64                    // количество светодиодов в матрице // number of LEDs 
 CRGB leds[NUM_LEDS];                   // определяем матрицу (FastLED библиотека) // defining the matrix (fastLED library)
-#define LED_PIN             23         // пин к которому подключена матрица // matrix pin
+#define LED_PIN             18         // пин к которому подключена матрица // matrix pin
 #define COLOR_ORDER         GRB        // порядок цветов матрицы // color order 
 #define CHIPSET             WS2812     // тип светодиодов // LED type            
 
@@ -70,7 +70,7 @@ void setup()
   }
   Serial.print("\nWiFi connected. IP address: ");
   Serial.println(WiFi.localIP());
-  myservo.attach(5);
+  myservo.attach(19);
   Wire.begin();
 
   pinMode( pump, OUTPUT );
