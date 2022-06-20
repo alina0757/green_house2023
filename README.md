@@ -12,7 +12,7 @@
 
 | Название    | Описание |
 | ----------- | -----------|
-|Adafruit_ADS1X15.zip   | библиотека для  MGS-D1015|
+|Adafruit_ADS1X15.zip   | библиотека для  MGB-D1015|
 | Adafruit_BME280_Library.zip      | библиотека для MGS-THP80 |
 | Adafruit_Unified_Sensor.zip     | библиотека для MGS-THP80 |
 | BH1750FVI.zip    | библиотека для MGS-L75 |
