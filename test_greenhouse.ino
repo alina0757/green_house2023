@@ -33,6 +33,9 @@ BH1750FVI LightSensor_1;      // BH1750
 #include <Adafruit_BME280.h>  // BME280                         
 Adafruit_BME280 bme280;       //
 
+/* если у вас в комплектации вместо датчика УФ MGS-UV60 есть датчик MGS-GUVA - используйте эту библиотеку и код: https://github.com/MAKblC/Codes/tree/master/MGS-GUVA
+если MGS-CO30: https://github.com/MAKblC/Codes/tree/master/MGS-CO30
+*/
 #include <VEML6075.h>         // добавляем библиотеку датчика ультрафиолета // adding Ultraviolet sensor library        
 VEML6075 veml6075;            // VEML6075
 
@@ -62,8 +65,11 @@ void setup()
 
   bool bme_status = bme280.begin();
   if (!bme_status)
-    Serial.println("Could not find a valid BME280 sensor, check wiring!");  // проверка  датчика температуры, влажности и давления // checking the temp hum bar sensor
+      Serial.println("Could not find a valid BME280 sensor, check wiring!");  // проверка  датчика температуры, влажности и давления // checking the temp hum bar sensor
 
+  /* если у вас в комплектации вместо датчика УФ MGS-UV60 есть датчик MGS-GUVA - используйте эту библиотеку и код: https://github.com/MAKblC/Codes/tree/master/MGS-GUVA
+  если MGS-CO30: https://github.com/MAKblC/Codes/tree/master/MGS-CO30
+  */
   if (!veml6075.begin())
     Serial.println("VEML6075 not found!");   // проверка работы датчика ультрафиолета  // checking the UV sensor
 
@@ -73,6 +79,9 @@ void setup()
 
 void loop()
 {
+  /* если у вас в комплектации вместо датчика УФ MGS-UV60 есть датчик MGS-GUVA - используйте эту библиотеку и код: https://github.com/MAKblC/Codes/tree/master/MGS-GUVA
+  если MGS-CO30: https://github.com/MAKblC/Codes/tree/master/MGS-CO30
+  */
   veml6075.poll();
   float uva = veml6075.getUVA();
   float uvb = veml6075.getUVB();
