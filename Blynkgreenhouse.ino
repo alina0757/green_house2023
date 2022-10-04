@@ -101,7 +101,7 @@ void setup()
   if (!bme_status)
     Serial.println("Could not find a valid BME280 sensor, check wiring!");  // проверка  датчика температуры, влажности и давления 
 
- #ifdef MGS_UV60
+#ifdef MGS_UV60
   if (!veml6075.begin())
     Serial.println("VEML6075 not found!");
 #endif
