@@ -135,12 +135,6 @@ void readSendData() {
   Blynk.virtualWrite(V12, uvb); delay(25);      // Отправка данных на сервер Blynk УФ-Б  
   Blynk.virtualWrite(V13, uv_index); delay(25); // Отправка данных на сервер Blynk УФ-И  
 #endif
-  float t = bme280.readTemperature();
-  float h = bme280.readHumidity();
-  float p = bme280.readPressure() / 100.0F;
-  Blynk.virtualWrite(V14, t); delay(25);        // Отправка данных на сервер Blynk  Температура 
-  Blynk.virtualWrite(V15, h); delay(25);        // Отправка данных на сервер Blynk  Влажность   
-  Blynk.virtualWrite(V16, p); delay(25);        // Отправка данных на сервер Blynk  Давление
 #ifdef MGS_GUVA
   float sensorVoltage;
   float sensorValue;
@@ -148,18 +142,26 @@ void readSendData() {
   sensorValue = mcp3221.getVoltage();
   sensorVoltage = 1000 * (sensorValue / 4096 * 5.0); // напряжение на АЦП
   UV_index = 370 * sensorVoltage / 200000; // Индекс УФ (эмпирическое измерение)
-  Blynk.virtualWrite(V14,  sensorVoltage); delay(25);       
-  Blynk.virtualWrite(V15,  UV_index); delay(25);  
+  Blynk.virtualWrite(V11,  sensorVoltage); delay(25);       
+  Blynk.virtualWrite(V12,  UV_index); delay(25);  
 #endif
 #ifdef MGS_CO30
   mySensor.measureAirQuality();
-  Blynk.virtualWrite(V14,  mySensor.CO2); delay(25);       
-  Blynk.virtualWrite(V15,  mySensor.TVOC); delay(25);  
+  Blynk.virtualWrite(V11,  mySensor.CO2); delay(25);       
+  Blynk.virtualWrite(V12,  mySensor.TVOC); delay(25);  
 #endif
   
+  float t = bme280.readTemperature();
+  float h = bme280.readHumidity();
+  float p = bme280.readPressure() / 100.0F;
+  Blynk.virtualWrite(V14, t); delay(25);        // Отправка данных на сервер Blynk  Температура 
+  Blynk.virtualWrite(V15, h); delay(25);        // Отправка данных на сервер Blynk  Влажность   
+  Blynk.virtualWrite(V16, p); delay(25);        // Отправка данных на сервер Blynk  Давление
+
   float l = LightSensor_1.getAmbientLight();
   Blynk.virtualWrite(V17, l); delay(25);        // Отправка данных на сервер Blynk  Освещенность 
-#ifdef MGB_D1015
+
+  #ifdef MGB_D1015
   float adc0 = (float)ads.readADC_SingleEnded(0) * 6.144 * 16;  
   float adc1 = (float)ads.readADC_SingleEnded(1) * 6.144 * 16;
   float t1 = ((adc1 / 1000));
