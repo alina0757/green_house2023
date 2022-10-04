@@ -50,7 +50,12 @@ Adafruit_BME280 bme280;       //
 
 #include "MCP3221.h"
 #include "SparkFun_SGP30_Arduino_Library.h"
-#include <VEML6075.h>         // добавляем библиотеку датчика ультрафиолета // adding Ultraviolet sensor library        
+#include <VEML6075.h>         // добавляем библиотеку датчика ультрафиолета // adding Ultraviolet sensor library   
+
+// Выберите датчик вашей сборки (ненужные занесите в комментарии)
+//#define MGS_GUVA 1
+#define MGS_CO30 1
+//#define MGS_UV60 1
 
 #ifdef MGS_CO30
 SGP30 mySensor;
