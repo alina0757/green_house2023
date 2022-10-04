@@ -161,7 +161,7 @@ void readSendData() {
   float l = LightSensor_1.getAmbientLight();
   Blynk.virtualWrite(V17, l); delay(25);        // Отправка данных на сервер Blynk  Освещенность 
 
-  #ifdef MGB_D1015
+#ifdef MGB_D1015
   float adc0 = (float)ads.readADC_SingleEnded(0) * 6.144 * 16;  
   float adc1 = (float)ads.readADC_SingleEnded(1) * 6.144 * 16;
   float t1 = ((adc1 / 1000));
