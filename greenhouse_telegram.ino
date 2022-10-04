@@ -26,11 +26,15 @@ Servo myservo;
 int pos = 1;            // начальная позиция сервомотора // servo start position
 int prevangle = 1;      // предыдущий угол сервомотора // previous angle of servo
 
-const unsigned long BOT_MTBS = 1000; // период обновления сканирования новых сообщений 
+// Выберите плату расширения вашей сборки (ненужные занесите в комментарии)
+#define MGB_D1015 1
+//#define MGB_P8 1
+
+const unsigned long BOT_MTBS = 1000; // период обновления сканирования новых сообщений
 
 WiFiClientSecure secured_client;
 UniversalTelegramBot bot(BOT_TOKEN, secured_client);
-unsigned long bot_lasttime; 
+unsigned long bot_lasttime;
 
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
@@ -39,21 +43,43 @@ Adafruit_BME280 bme280; // Датчик температуры, влажност
 #include <BH1750FVI.h>
 BH1750FVI bh1750; // Датчик освещенности
 
+#include "MCP3221.h"
+#include "SparkFun_SGP30_Arduino_Library.h"
 #include <VEML6075.h>         // добавляем библиотеку датчика ультрафиолета // adding Ultraviolet sensor library        
-VEML6075 veml6075;            // VEML6075
 
+#ifdef MGS_CO30
+SGP30 mySensor;
+#endif
+#ifdef MGS_GUVA
+const byte DEV_ADDR = 0x4F;  // 0x5С , 0x4D (также попробуйте просканировать адрес: https://github.com/MAKblC/Codes/tree/master/I2C%20scanner)
+MCP3221 mcp3221(DEV_ADDR);
+#endif
+#ifdef MGS_UV60
+VEML6075 veml6075;
+#endif
+
+#ifdef MGB_D1015
 Adafruit_ADS1015 ads(0x48);
 const float air_value    = 83900.0;
 const float water_value  = 45000.0;
 const float moisture_0   = 0.0;
-const float moisture_100 = 100.0;  // настройка АЦП на плате расширения I2C MGB-D10 // I2C MGB-D10 ADC configuration
+const float moisture_100 = 100.0;  // настройка АЦП на плате расширения I2C MGB-D10
+#endif
+#ifdef MGB_P8
+#define SOIL_MOISTURE    34 // A6
+#define SOIL_TEMPERATURE 35 // A7
+const float air_value    = 1587.0;
+const float water_value  = 800.0;
+const float moisture_0   = 0.0;
+const float moisture_100 = 100.0;
+#endif
 
 // ссылка для поста фотографии
 String test_photo_url = "https://mgbot.ru/upload/logo-r.png";
 
 // отобразить кнопки перехода на сайт с помощью InlineKeyboard
 String keyboardJson1 = "[[{ \"text\" : \"Ваш сайт\", \"url\" : \"https://mgbot.ru\" }],[{ \"text\" : \"Перейти на сайт IoTik.ru\", \"url\" : \"https://www.iotik.ru\" }]]";
-     
+
 void setup()
 {
   Serial.begin(115200);
@@ -62,7 +88,7 @@ void setup()
   Serial.print("Connecting to Wifi SSID ");
   Serial.print(WIFI_SSID);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  secured_client.setCACert(TELEGRAM_CERTIFICATE_ROOT); 
+  secured_client.setCACert(TELEGRAM_CERTIFICATE_ROOT);
   while (WiFi.status() != WL_CONNECTED)
   {
     Serial.print(".");
@@ -87,11 +113,25 @@ void setup()
   if (!bme_status)
     Serial.println("Could not find a valid BME280 sensor, check wiring!");
 
+#ifdef MGS_UV60
   if (!veml6075.begin())
-    Serial.println("VEML6075 not found!");   // проверка работы датчика ультрафиолета  // checking the UV sensor
+    Serial.println("VEML6075 not found!");
+#endif
+#ifdef MGS_GUVA
+  mcp3221.setVinput(VOLTAGE_INPUT_5V);
+#endif
+#ifdef MGS_CO30
+  if (mySensor.begin() == false) {
+    Serial.println("No SGP30 Detected. Check connections.");
+    while (1);
+  }
+  mySensor.initAirQuality();
+#endif
 
+#ifdef MGB_D1015
   ads.setGain(GAIN_TWOTHIRDS);
-  ads.begin();    // включем АЦП // turn the ADC on
+  ads.begin();    // включем АЦП
+#endif
 }
 
 // функция обработки новых сообщений
@@ -109,13 +149,26 @@ void handleNewMessages(int numNewMessages)
     if (from_name == "")
       from_name = "Guest";
 
-// выполняем действия в зависимости от пришедшей команды
+    // выполняем действия в зависимости от пришедшей команды
     if ((text == "/sensors") || (text == "sensors")) // измеряем данные
     {
+#ifdef MGS_UV60
       veml6075.poll();
       float uva = veml6075.getUVA();
       float uvb = veml6075.getUVB();
       float uv_index = veml6075.getUVIndex();
+#endif
+#ifdef MGS_GUVA
+      float sensorVoltage;
+      float sensorValue;
+      float UV_index;
+      sensorValue = mcp3221.getVoltage();
+      sensorVoltage = 1000 * (sensorValue / 4096 * 5.0); // напряжение на АЦП
+      UV_index = 370 * sensorVoltage / 200000; // Индекс УФ (эмпирическое измерение)
+#endif
+#ifdef MGS_CO30
+      mySensor.measureAirQuality();
+#endif
 
       float light = bh1750.getAmbientLight();
 
@@ -123,12 +176,18 @@ void handleNewMessages(int numNewMessages)
       float h = bme280.readHumidity();
       float p = bme280.readPressure() / 100.0F;
 
+#ifdef MGB_D1015
       float adc0 = (float)ads.readADC_SingleEnded(0) * 6.144 * 16;
       float adc1 = (float)ads.readADC_SingleEnded(1) * 6.144 * 16;
-
       float t1 = (adc1 / 1000); //1023.0 * 5.0) - 0.5) * 100.0;
       float h1 = map(adc0, air_value, water_value, moisture_0, moisture_100);
-
+#endif
+#ifdef MGB_P8
+      float adc0 = analogRead(SOIL_MOISTURE);
+      float adc1 = analogRead(SOIL_TEMPERATURE);
+      float t1 = ((adc1 / 4095.0 * 5.0) - 0.3) * 100.0; // АЦП разрядность (12) = 4095
+      float h1 = map(adc0, air_value, water_value, moisture_0, moisture_100);
+#endif
       String welcome = "Показания датчиков:\n";
       welcome += "Temp: " + String(t, 1) + " C\n";
       welcome += "Hum: " + String(h, 0) + " %\n";
@@ -136,28 +195,38 @@ void handleNewMessages(int numNewMessages)
       welcome += "Light: " + String(light, 0) + " Lx\n";
       welcome += "Soil temp: " + String(t1, 0) + " C\n";
       welcome += "Soil hum: " + String(h1, 0) + " %\n";
+#ifdef MGS_UV60
       welcome += "UVA: " + String(uva, 0) + " mkWt/cm2\n";
       welcome += "UVB: " + String(uvb, 0) + " mkWt/cm2\n";
       welcome += "UV Index: " + String(uv_index, 1) + " \n";
+#endif
+#ifdef MGS_GUVA
+      welcome += "Sensor voltage: " + String(sensorVoltage, 1) + " mV\n";
+      welcome += "UV Index: " + String(UV_index, 1) + " \n";
+#endif
+#ifdef MGS_CO30
+      welcome += "CO2: " + String(mySensor.CO2, 0) + " ppm\n";
+      welcome += "TVOC: " + String(mySensor.TVOC, 0) + " ppb\n";
+#endif
       bot.sendMessage(chat_id, welcome, "Markdown");
 
     }
-    
-    if (text == "/photo") { // пост фотографии 
+
+    if (text == "/photo") { // пост фотографии
       bot.sendPhoto(chat_id, test_photo_url, "а вот и фотка!");
     }
-    
+
     if ((text == "/pumpon") || (text == "pumpon"))
     {
       digitalWrite(pump, HIGH);
       delay(1000);
       bot.sendMessage(chat_id, "Насос включен на 1 сек", "");
-       digitalWrite(pump, LOW);
+      digitalWrite(pump, LOW);
     }
     if ((text == "/pumpoff") || (text == "pumpoff"))
     {
       digitalWrite(pump, LOW);
-      fill_solid( leds, NUM_LEDS, CRGB(0,0,0));
+      fill_solid( leds, NUM_LEDS, CRGB(0, 0, 0));
       FastLED.show();
       bot.sendMessage(chat_id, "Насос выключен", "");
     }
@@ -191,14 +260,14 @@ void handleNewMessages(int numNewMessages)
     }
     if (text == "/site") // отобразить кнопки в диалоге для перехода на сайт
     {
-       bot.sendMessageWithInlineKeyboard(chat_id, "Выберите действие", "", keyboardJson1);
+      bot.sendMessageWithInlineKeyboard(chat_id, "Выберите действие", "", keyboardJson1);
     }
     if (text == "/options") // клавиатура для управления теплицей
     {
       String keyboardJson = "[[\"/light\", \"/off\"],[\"/color\",\"/sensors\"],[\"/pumpon\", \"/pumpoff\",\"/windon\", \"/windoff\"],[\"/open\",\"/close\"]]";
       bot.sendMessageWithReplyKeyboard(chat_id, "Выберите команду", "", keyboardJson, true);
     }
-    
+
     if ((text == "/start") || (text == "start") || (text == "/help") || (text == "help")) // команда для вызова помощи
     {
       bot.sendMessage(chat_id, "Привет, " + from_name + "!", "");
@@ -210,7 +279,7 @@ void handleNewMessages(int numNewMessages)
       sms += "/help - вызвать помощь\n";
       bot.sendMessage(chat_id, sms, "Markdown");
     }
-    
+
     if (text == "/open")
     {
       myservo.write(100);
