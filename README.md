@@ -20,6 +20,8 @@
 | FastLED-3.2.0.zip  | библиотека для матрицы |
 | FastLED-GFX-master.zip    |библиотека для матрицы|
 | FastLEDMatrix-master.zip   | библиотека для матрицы|
+| MCP3221_modified.zip   | библиотека для MGS-GUVA|
+|SparkFun_SGP30_Arduino_Library-1.0.5.zip | библиотека для MGS-CO30|
 | VEML6075.zip   |библиотека для MGS-UV60|
 | Blynkgreenhouse.ino   |скетч для Blynk старой версии|
 | GreenhouseNewBlynk.ino  | скетч для Blynk новой версии|
