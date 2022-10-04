@@ -37,6 +37,10 @@ Servo myservo;
 int pos = 1;            // начальная позиция сервомотора // servo start position
 int prevangle = 1;      // предыдущий угол сервомотора // previous angle of servo
 
+// Выберите плату расширения вашей сборки (ненужные занесите в комментарии)
+#define MGB_D1015 1
+//#define MGB_P8 1
+
 #include <BH1750FVI.h>        // добавляем библиотеку датчика освещенности // adding Light intensity sensor library  
 BH1750FVI LightSensor_1;      // BH1750
 
@@ -44,18 +48,39 @@ BH1750FVI LightSensor_1;      // BH1750
 #include <Adafruit_BME280.h>  // BME280                         
 Adafruit_BME280 bme280;       //
 
+#include "MCP3221.h"
+#include "SparkFun_SGP30_Arduino_Library.h"
 #include <VEML6075.h>         // добавляем библиотеку датчика ультрафиолета // adding Ultraviolet sensor library        
-VEML6075 veml6075;            // VEML6075
+
+#ifdef MGS_CO30
+SGP30 mySensor;
+#endif
+#ifdef MGS_GUVA
+const byte DEV_ADDR = 0x4F;  // 0x5С , 0x4D (также попробуйте просканировать адрес: https://github.com/MAKblC/Codes/tree/master/I2C%20scanner)
+MCP3221 mcp3221(DEV_ADDR);
+#endif
+#ifdef MGS_UV60
+VEML6075 veml6075;
+#endif 
 
 #define UPDATE_TIMER 1000
 BlynkTimer timer_update;      // настройка таймера для обновления данных с сервера BLynk // Blynk update timer configuration
 
+#ifdef MGB_D1015
 Adafruit_ADS1015 ads(0x48);
 const float air_value    = 83900.0;
 const float water_value  = 45000.0;
 const float moisture_0   = 0.0;
-const float moisture_100 = 100.0;  // настройка АЦП на плате расширения I2C MGB-D10 // I2C MGB-D10 ADC configuration
-
+const float moisture_100 = 100.0;  // настройка АЦП на плате расширения I2C MGB-D10 
+#endif
+#ifdef MGB_P8
+#define SOIL_MOISTURE    34 // A6
+#define SOIL_TEMPERATURE 35 // A7
+const float air_value    = 1587.0;
+const float water_value  = 800.0;
+const float moisture_0   = 0.0;
+const float moisture_100 = 100.0;
+#endif
 int r, g, b;
 
 // Эта функция обработается по изменению состояния виртуального порта V0 (кнопка)
@@ -82,15 +107,30 @@ BLYNK_WRITE(V0)
 
 // Эта функция срабатывает каждый раз по истечению таймера
 void readSendData() {
-
+#ifdef MGS_UV60
   veml6075.poll();
   float uva = veml6075.getUVA();
   float uvb = veml6075.getUVB();
   float uv_index = veml6075.getUVIndex();
-  Blynk.virtualWrite(V11, uva); delay(25);      // Отправка данных на сервер Blynk УФ-А  // Uv-A data send
-  Blynk.virtualWrite(V12, uvb); delay(25);      // Отправка данных на сервер Blynk УФ-Б  // Uv-B data send
-  Blynk.virtualWrite(V13, uv_index); delay(25); // Отправка данных на сервер Blynk УФ-И  // Uv-Index data send
-
+  Blynk.virtualWrite(V11, uva); delay(25);      // Отправка данных на сервер Blynk УФ-А  
+  Blynk.virtualWrite(V12, uvb); delay(25);      // Отправка данных на сервер Blynk УФ-Б  
+  Blynk.virtualWrite(V13, uv_index); delay(25); // Отправка данных на сервер Blynk УФ-И  
+#endif
+#ifdef MGS_GUVA
+  float sensorVoltage;
+  float sensorValue;
+  float UV_index;
+  sensorValue = mcp3221.getVoltage();
+  sensorVoltage = 1000 * (sensorValue / 4096 * 5.0); // напряжение на АЦП
+  UV_index = 370 * sensorVoltage / 200000; // Индекс УФ (эмпирическое измерение)
+  Blynk.virtualWrite(V11,  sensorVoltage); delay(25);       
+  Blynk.virtualWrite(V12,  UV_index); delay(25);  
+#endif
+#ifdef MGS_CO30
+  mySensor.measureAirQuality();
+  Blynk.virtualWrite(V11,  mySensor.CO2); delay(25);       
+  Blynk.virtualWrite(V12,  mySensor.TVOC); delay(25);  
+#endif
   float t = bme280.readTemperature();
   float h = bme280.readHumidity();
   float p = bme280.readPressure() / 100.0F;
@@ -101,15 +141,22 @@ void readSendData() {
   float l = LightSensor_1.getAmbientLight();
   Blynk.virtualWrite(V17, l); delay(25);        // Отправка данных на сервер Blynk  Освещенность // Light intensity data send
 
-  float adc0 = (float)ads.readADC_SingleEnded(0) * 6.144 * 16;
+#ifdef MGB_D1015
+  float adc0 = (float)ads.readADC_SingleEnded(0) * 6.144 * 16;  
   float adc1 = (float)ads.readADC_SingleEnded(1) * 6.144 * 16;
-
   float t1 = ((adc1 / 1000));
+  float h1 = map(adc0, air_value, water_value, moisture_0, moisture_100); // преобразование данных в диапазон 0-100
+  Blynk.virtualWrite(V7, t1); delay(25);        // Отправка данных на сервер Blynk  Температура почвы  
+  Blynk.virtualWrite(V9, h1); delay(25);        // Отправка данных на сервер Blynk  Влажность почвы  
+#endif
+#ifdef MGB_P8
+  float adc0 = analogRead(SOIL_MOISTURE);
+  float adc1 = analogRead(SOIL_TEMPERATURE);
+  float t1 = ((adc1 / 4095.0 * 5.0) - 0.3) * 100.0; // АЦП разрядность (12) = 4095
   float h1 = map(adc0, air_value, water_value, moisture_0, moisture_100);
-
-  Blynk.virtualWrite(V7, t1); delay(25);        // Отправка данных на сервер Blynk  Температура почвы  // Soil temperature data send
-  Blynk.virtualWrite(V9, h1); delay(25);        // Отправка данных на сервер Blynk  Влажность почвы    // Soil humidity data send
-
+  Blynk.virtualWrite(V7, t1); delay(25);        // Отправка данных на сервер Blynk  Температура почвы  
+  Blynk.virtualWrite(V9, h1); delay(25);        // Отправка данных на сервер Blynk  Влажность почвы  
+#endif
 }
 
 void setup()
@@ -137,9 +184,21 @@ void setup()
   if (!bme_status)
     Serial.println("Could not find a valid BME280 sensor, check wiring!");  // проверка  датчика температуры, влажности и давления // checking the temp hum bar sensor
 
+#ifdef MGS_UV60
   if (!veml6075.begin())
-    Serial.println("VEML6075 not found!");   // проверка работы датчика ультрафиолета  // checking the UV sensor
-
+    Serial.println("VEML6075 not found!");
+#endif
+#ifdef MGS_GUVA
+  mcp3221.setVinput(VOLTAGE_INPUT_5V);
+#endif
+#ifdef MGS_CO30
+  if (mySensor.begin() == false) {
+    Serial.println("No SGP30 Detected. Check connections.");
+    while (1);
+  }
+  mySensor.initAirQuality();
+#endif 
+  
   timer_update.setInterval(UPDATE_TIMER, readSendData);  // включаем таймер обновления данных  // turn on the update timer
 
   ads.setGain(GAIN_TWOTHIRDS);
