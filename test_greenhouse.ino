@@ -19,8 +19,8 @@ CRGB leds[NUM_LEDS];                   // определяем матрицу (F
 #define COLOR_ORDER         GRB        // порядок цветов матрицы // color order 
 #define CHIPSET             WS2812     // тип светодиодов // LED type   
 
-#define  pump   16                     // пин насоса // pump pin             
-#define  wind   17                     // пин вентилятора // cooler pin          
+#define  pump   17                     // пин насоса // pump pin             
+#define  wind   16                     // пин вентилятора // cooler pin          
 
 Servo myservo;
 int pos = 1;            // начальная позиция сервомотора // servo start position
