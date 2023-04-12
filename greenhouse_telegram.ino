@@ -210,8 +210,8 @@ void handleNewMessages(int numNewMessages)
       welcome += "UV Index: " + String(UV_index, 1) + " \n";
 #endif
 #ifdef MGS_CO30
-      welcome += "CO2: " + String(mySensor.CO2, 0) + " ppm\n";
-      welcome += "TVOC: " + String(mySensor.TVOC, 0) + " ppb\n";
+      welcome += "CO2: " + String(mySensor.CO2) + " ppm\n";
+      welcome += "TVOC: " + String(mySensor.TVOC) + " ppb\n";
 #endif
       bot.sendMessage(chat_id, welcome, "Markdown");
 
