@@ -128,7 +128,6 @@ void setup()
 #ifdef MGS_CO30
   if (mySensor.begin() == false) {
     Serial.println("No SGP30 Detected. Check connections.");
-    while (1);
   }
   mySensor.initAirQuality();
 #endif
