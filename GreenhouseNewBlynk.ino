@@ -41,8 +41,8 @@ int prevangle = 1;      // предыдущий угол сервомотора 
 #define MGB_D1015 1
 //#define MGB_P8 1
 
-#include <BH1750FVI.h>        // добавляем библиотеку датчика освещенности // adding Light intensity sensor library  
-BH1750FVI LightSensor_1;      // BH1750
+#include <BH1750.h>        // добавляем библиотеку датчика освещенности // adding Light intensity sensor library  
+BH1750 lightMeter;      // BH1750
 
 #include <Adafruit_Sensor.h>  // добавляем библиотеку датчика температуры, влажности и давления // adding Temp Hum Bar sensor library
 #include <Adafruit_BME280.h>  // BME280                         
@@ -143,7 +143,7 @@ void readSendData() {
   Blynk.virtualWrite(V15, h); delay(25);        // Отправка данных на сервер Blynk  Влажность   // Humidity data send
   Blynk.virtualWrite(V16, p); delay(25);        // Отправка данных на сервер Blynk  Давление    // Pressure data send
 
-  float l = LightSensor_1.getAmbientLight();
+  float l = lightMeter.readLightLevel();
   Blynk.virtualWrite(V17, l); delay(25);        // Отправка данных на сервер Blynk  Освещенность // Light intensity data send
 
 #ifdef MGB_D1015
@@ -182,9 +182,8 @@ void setup()
 
   FastLED.addLeds<NEOPIXEL, LED_PIN>(leds, NUM_LEDS);    // конфигурация матрицы // matrix configuration
 
-  LightSensor_1.begin();              // запуск датчика освещенности // turn the light intensity sensor on
-  LightSensor_1.setMode(Continuously_High_Resolution_Mode);
-
+  lightMeter.begin();              // запуск датчика освещенности // turn the light intensity sensor on
+  
   bool bme_status = bme280.begin();
   if (!bme_status)
     Serial.println("Could not find a valid BME280 sensor, check wiring!");  // проверка  датчика температуры, влажности и давления // checking the temp hum bar sensor
