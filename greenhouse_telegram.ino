@@ -40,8 +40,8 @@ unsigned long bot_lasttime;
 #include <Adafruit_BME280.h>
 Adafruit_BME280 bme280; // Датчик температуры, влажности и атмосферного давления
 
-#include <BH1750FVI.h>
-BH1750FVI bh1750; // Датчик освещенности
+#include <BH1750.h>
+BH1750 lightMeter; // Датчик освещенности
 
 #include "MCP3221.h"
 #include "SparkFun_SGP30_Arduino_Library.h"
@@ -109,8 +109,7 @@ void setup()
   digitalWrite(pump, LOW);       // устанавливаем насос и вентилятор изначально выключенными // turn cooler and pump off
   digitalWrite(wind, LOW);
 
-  bh1750.begin();
-  bh1750.setMode(Continuously_High_Resolution_Mode); // датчик освещенности
+  lightMeter.begin(); // датчик освещенности
 
   FastLED.addLeds<NEOPIXEL, LED_PIN>(leds, NUM_LEDS); // настройки матрицы
 
@@ -174,7 +173,7 @@ void handleNewMessages(int numNewMessages)
       mySensor.measureAirQuality();
 #endif
 
-      float light = bh1750.getAmbientLight();
+      float light = lightMeter.readLightLevel();
 
       float t = bme280.readTemperature();
       float h = bme280.readHumidity();
@@ -196,7 +195,7 @@ void handleNewMessages(int numNewMessages)
       welcome += "Temp: " + String(t, 1) + " C\n";
       welcome += "Hum: " + String(h, 0) + " %\n";
       welcome += "Press: " + String(p, 0) + " hPa\n";
-      welcome += "Light: " + String(light, 0) + " Lx\n";
+      welcome += "Light: " + String(light) + " Lx\n";
       welcome += "Soil temp: " + String(t1, 0) + " C\n";
       welcome += "Soil hum: " + String(h1, 0) + " %\n";
 #ifdef MGS_UV60
