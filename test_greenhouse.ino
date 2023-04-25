@@ -26,8 +26,8 @@ Servo myservo;
 int pos = 1;            // начальная позиция сервомотора // servo start position
 int prevangle = 1;      // предыдущий угол сервомотора // previous angle of servo
 
-#include <BH1750FVI.h>        // добавляем библиотеку датчика освещенности // adding Light intensity sensor library  
-BH1750FVI LightSensor_1;      // BH1750
+#include <BH1750.h>        // добавляем библиотеку датчика освещенности // adding Light intensity sensor library  
+BH1750 lightMeter;     // BH1750
 
 #include <Adafruit_Sensor.h>  // добавляем библиотеку датчика температуры, влажности и давления // adding Temp Hum Bar sensor library
 #include <Adafruit_BME280.h>  // BME280                         
@@ -87,9 +87,8 @@ void setup()
 
   FastLED.addLeds<NEOPIXEL, LED_PIN>(leds, NUM_LEDS);    // конфигурация матрицы // matrix configuration
 
-  LightSensor_1.begin();              // запуск датчика освещенности // turn the light intensity sensor on
-  LightSensor_1.setMode(Continuously_High_Resolution_Mode);
-
+  lightMeter.begin();              // запуск датчика освещенности // turn the light intensity sensor on
+ 
   bool bme_status = bme280.begin();
   if (!bme_status)
     Serial.println("Could not find a valid BME280 sensor, check wiring!");  // проверка  датчика температуры, влажности и давления // checking the temp hum bar sensor
@@ -152,8 +151,8 @@ void loop()
   Serial.println("air humidity = " + String(h, 1) + " %");
   Serial.println("pressure = " + String(p, 1) + " hPa");
   delay(1512);
-  float l = LightSensor_1.getAmbientLight();
-  Serial.println("light intensity = " + String(l, 1) + " lx");
+  float l = lightMeter.readLightLevel();
+  Serial.println("light intensity = " + String(l) + " lx");
   delay(1512);
 #ifdef MGB_D1015
   float adc0 = (float)ads.readADC_SingleEnded(0) * 6.144 * 16;
