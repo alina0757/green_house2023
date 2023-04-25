@@ -19,7 +19,7 @@
 | Adafruit_Unified_Sensor.zip     | библиотека для MGS-THP80 |
 | BH1750FVI.zip    | библиотека для MGS-L75 |
 | ESP32_Servo-master.zip   | библиотека для MG90S |
-| FastLED-3.2.0.zip  | библиотека для матрицы |
+| FastLED-master.zip  | библиотека для матрицы |
 | FastLED-GFX-master.zip    |библиотека для матрицы|
 | FastLEDMatrix-master.zip   | библиотека для матрицы|
 | MCP3221_modified.zip   | библиотека для MGS-GUVA|
