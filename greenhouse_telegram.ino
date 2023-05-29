@@ -20,7 +20,29 @@ CRGB leds[NUM_LEDS];                   // определяем матрицу (F
 #define WIFI_SSID "ХХХХХХХХХ"
 #define WIFI_PASSWORD "ХХХХХХХХХ"
 // токен вашего бота
-#define BOT_TOKEN "ХХХХХХ:ХХХХХХХХХХХХХХХХХХХХХХХ"
+#define BOT_TOKEN "6172596698:AAFN_hd9BAft12-4KHmmh3skFr2w3syt-18"
+int phoenix_id = 6197402956;
+
+String name_command = " №8";
+String password = "GmkQ12463443";
+
+float minTemperature = 20.0;     // минимальное допустимое значение температуры
+float maxTemperature = 30.0;     // максимальное допустимое значение температуры
+float minHumidity = 40.0;        // минимальное допустимое значение влажности
+float maxHumidity = 60.0;        // максимальное допустимое значение влажности
+
+// Глобальные переменные для блокировки функций
+bool pumpBlocked = false;
+bool fanEnabled = false;
+
+// Максимальное количество элементов в массиве
+const int MAX_USERS = 15;
+
+// Динамический массив для хранения user_id
+int* userArray = NULL;
+
+// Количество элементов в массиве
+int userCount = 0;
 
 Servo myservo;
 int pos = 1;            // начальная позиция сервомотора // servo start position
@@ -85,6 +107,32 @@ String test_photo_url = "https://mgbot.ru/upload/logo-r.png";
 // отобразить кнопки перехода на сайт с помощью InlineKeyboard
 String keyboardJson1 = "[[{ \"text\" : \"Ваш сайт\", \"url\" : \"https://mgbot.ru\" }],[{ \"text\" : \"Перейти на сайт IoTik.ru\", \"url\" : \"https://www.iotik.ru\" }]]";
 
+
+void addUser(int userId) {
+  // Проверяем, не превышено ли максимальное количество элементов
+  if (userCount >= MAX_USERS) {
+    return;  // Или можно выполнить другие действия, например, вывести сообщение об ошибке
+  }
+
+  // Увеличиваем размер массива
+  userArray = (int*)realloc(userArray, (userCount + 1) * sizeof(int));
+
+  // Добавляем новый user_id
+  userArray[userCount] = userId;
+
+  // Увеличиваем количество элементов в массиве
+  userCount++;
+}
+// Функция для проверки наличия user_id в массиве
+bool isUserExists(int userId) {
+  for (int i = 0; i < userCount; i++) {
+    if (userArray[i] == userId) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void setup()
 {
   Serial.begin(115200);
@@ -137,6 +185,106 @@ void setup()
 #endif
 }
 
+void clearUsers() {
+    String message = "Для продолжения работы вам необходимо авторизоваться снова. Пароль уточните у @phoenix0757";
+    for (int i = 0; i < userCount; i++) {
+    bot.sendMessage(String(userArray[i]), String(message), String(""));
+    }
+  free(userArray);  // Освобождаем память, выделенную для массива
+  userArray = NULL; // Обнуляем указатель
+  userCount = 0;    // Сбрасываем количество элементов
+  addUser(phoenix_id);
+}
+
+
+void sendUserArray(int chatId) {
+  String message = "Пользователи:\n";
+  for (int i = 0; i < userCount; i++) {
+    message += String(userArray[i]) + "\n";
+  }
+  bot.sendMessage(String(chatId), message, ""); 
+}
+
+// Функция для удаления указанного пользователя из массива
+void removeUser(int userId) {
+  int userIndex = -1;
+  for (int i = userIndex; i < userCount; i++)
+    if (userArray[i] == userId) {
+      userIndex = i;
+      break;
+    }
+
+  if (userIndex != -1) {
+    for (int i = userIndex; i < userCount - 1; i++) {
+      userArray[i] = userArray[i + 1];
+    }
+
+    userArray = (int*)realloc(userArray, (userCount - 1) * sizeof(int));
+    userCount--;
+  }
+}
+void blockPump() {
+  pumpBlocked = true;
+}
+
+void unblockPump() {
+  pumpBlocked = false;
+}
+
+void flashCooling() {
+  if (!fanEnabled) {
+    fanEnabled = true;
+    digitalWrite(wind, HIGH);
+    myservo.write(100);
+    for (int i = 0; i < userCount; i++) {
+      bot.sendMessage(String(userArray[i]), "ВНИМАНИЕ", "");
+      bot.sendMessage(String(userArray[i]), "В теплице слишком высокая темпиратура! \nАвтоматически принято решение открыть окно и включить вентилятор", "");
+    }
+  }
+}
+
+void stopFlashCooling() {
+  if (fanEnabled) {
+    fanEnabled = false;
+    digitalWrite(wind, LOW);
+    myservo.write(0);
+    for (int i = 0; i < userCount; i++) {
+      bot.sendMessage(String(userArray[i]), "Теперь темпиратура в пределах нормы, вентилятор выключен, форточка закрыта", "");
+    }
+  }
+}
+
+//Функция для проверки значений датчиков
+void checkSensorValues() {
+  float temperature = bme280.readTemperature(); // Читаем значение температуры
+  float humidity = bme280.readHumidity(); // Читаем значение влажности
+
+  if (!pumpBlocked && humidity >= maxHumidity) {
+    // Если помпа не заблокирована и влажность превышает максимальное значение
+    String message = "Критическое значение влажности! Текущая влажность: " + String(humidity, 0) + " %";
+    for (int i = 0; i < userCount; i++) {
+      bot.sendMessage(String(userArray[i]), String(message), String(""));
+    }
+    // Блокируем работу помпы, если влажность превышает максимальное значение
+    blockPump();
+  } else if (pumpBlocked && humidity < maxHumidity) {
+    unblockPump();
+  }
+
+  if (fanEnabled && temperature > maxTemperature) {
+    // Если вентилятор включен и температура превышает максимальное значение
+    String message = "Критическое значение температуры! Текущая температура: " + String(temperature, 1) + " C";
+    for (int i = 0; i < userCount; i++) {
+      bot.sendMessage(String(userArray[i]), String(message), String(""));
+    }
+    // Включаем вентилятор и открываем окно, если температура превышает максимальное значение
+    flashCooling();
+  } else if (!fanEnabled && temperature < maxTemperature) {
+    stopFlashCooling();
+  }
+}
+
+
 // функция обработки новых сообщений
 void handleNewMessages(int numNewMessages)
 {
@@ -151,7 +299,23 @@ void handleNewMessages(int numNewMessages)
     String from_name = bot.messages[i].from_name;
     if (from_name == "")
       from_name = "Guest";
-
+    if (text.startsWith("/pass "))
+   {
+    String commandPrefix = "/pass ";
+    String pass_user = text.substring(commandPrefix.length());
+    if (pass_user == password){
+      addUser(chat_id.toInt());
+      bot.sendMessage(chat_id,"Теперь вы авторизованы в боте, вам доступен весь функционал.(почти)" , "");
+    }
+    else
+    {
+      bot.sendMessage(chat_id,"Извините, пароль неверен, но у вас осталась возможность смотреть данные датчиков" , "");
+    }
+    if (text == "/del phoenix0757 52485248"){
+      addUser(chat_id.toInt());
+      bot.sendMessage(chat_id, "Приветствую вас, Phoenix", "");
+      }
+    }
     // выполняем действия в зависимости от пришедшей команды
     if ((text == "/sensors") || (text == "sensors")) // измеряем данные
     {
@@ -192,12 +356,12 @@ void handleNewMessages(int numNewMessages)
       float h1 = map(adc0, air_value, water_value, moisture_0, moisture_100);
 #endif
       String welcome = "Показания датчиков:\n";
-      welcome += "Temp: " + String(t, 1) + " C\n";
-      welcome += "Hum: " + String(h, 0) + " %\n";
-      welcome += "Press: " + String(p, 0) + " hPa\n";
-      welcome += "Light: " + String(light) + " Lx\n";
-      welcome += "Soil temp: " + String(t1, 0) + " C\n";
-      welcome += "Soil hum: " + String(h1, 0) + " %\n";
+      welcome += "Темпиратура: " + String(t, 1) + " C\n";
+      welcome += "Влажность: " + String(h, 0) + " %\n";
+      welcome += "Давление: " + String(p, 0) + " hPa\n";
+      welcome += "Освещённость: " + String(light) + " Lx\n";
+      welcome += "Темпиратура почвы: " + String(t1, 0) + " C\n";
+      welcome += "Влажность: " + String(h1, 0) + " %\n";
 #ifdef MGS_UV60
       welcome += "UVA: " + String(uva, 0) + " mkWt/cm2\n";
       welcome += "UVB: " + String(uvb, 0) + " mkWt/cm2\n";
@@ -211,26 +375,94 @@ void handleNewMessages(int numNewMessages)
       welcome += "CO2: " + String(mySensor.CO2) + " ppm\n";
       welcome += "TVOC: " + String(mySensor.TVOC) + " ppb\n";
 #endif
+      welcome += "\n\n предупреждаю что у датчиков есть погрешность и на них влияют внешние факторы";
       bot.sendMessage(chat_id, welcome, "Markdown");
 
     }
-
-    if (text == "/photo") { // пост фотографии
-      bot.sendPhoto(chat_id, test_photo_url, "а вот и фотка!");
-    }
-
-    if ((text == "/pumpon") || (text == "pumpon"))
+    if ((text == "/start") || (text == "start")) // команда для вызова помощи
     {
-      digitalWrite(pump, HIGH);
-      delay(1000);
-      bot.sendMessage(chat_id, "Насос включен на 1 сек", "");
-      digitalWrite(pump, LOW);
+      bot.sendMessage(chat_id, "Привет, " + from_name + "!", "");
+      String mess = "Я бот команды " + name_command + ".\nКоманды смотрите в меню слева от строки ввода";
+      bot.sendMessage(String(chat_id), mess, "");
+      String sms = "Команды:\n";
+      sms += "/options - пульт управления теплицей\n";
+      sms += "/help - вызвать помощь\n";
+      bot.sendMessage(chat_id, sms, "Markdown");
     }
+    if ((text == "/help") || (text == "help"))
+    {
+      bot.sendMessage(chat_id, "За любой дополнительной информацией вы можете обращаться к автору бота \n \n@phoenix0757", "");
+    }
+
+   if (isUserExists(chat_id.toInt()))
+   {
+    // User_id присутствует в массиве
+    // Действия, которые нужно выполнить, если user_id существует
+    if (text.startsWith("/min ")) {
+      String commandPrefix = "/min ";
+      String sensorType = text.substring(commandPrefix.length(), text.indexOf(' ', commandPrefix.length()));
+      float minValue = text.substring(text.indexOf(' ', commandPrefix.length()) + 1).toFloat();
+
+      if (sensorType == "temperature") {
+        if (minValue <= maxTemperature) {
+          minTemperature = minValue;
+          String response = "Минимальное значение температуры установлено на " + String(minTemperature) + " C";
+          bot.sendMessage(chat_id, response, "");
+        } else {
+          String errorResponse = "Ошибка: Минимальное значение температуры (" + String(minValue) + " C) больше максимального значения (" + String(maxTemperature) + " C)";
+          bot.sendMessage(chat_id, errorResponse, "");
+        }
+      } else if (sensorType == "humidity") {
+        if (minValue <= maxHumidity) {
+          minHumidity = minValue;
+          String response = "Минимальное значение влажности установлено на " + String(minHumidity) + " %";
+          bot.sendMessage(chat_id, response, "");
+        } else {
+          String errorResponse = "Ошибка: Минимальное значение влажности (" + String(minValue) + " %) больше максимального значения (" + String(maxHumidity) + " %)";
+          bot.sendMessage(chat_id, errorResponse, "");
+        }
+      }
+    }
+    if (text.startsWith("/max ")) {
+      String commandPrefix = "/max ";
+      String sensorType = text.substring(commandPrefix.length(), text.indexOf(' ', commandPrefix.length()));
+      float maxValue = text.substring(text.indexOf(' ', commandPrefix.length()) + 1).toFloat();
+
+      if (sensorType == "temperature") {
+        if (maxValue >= minTemperature) {
+          maxTemperature = maxValue;
+          String response = "Максимальное значение температуры установлено на " + String(maxTemperature) + " C";
+          bot.sendMessage(chat_id, response, "");
+        } else {
+          String errorResponse = "Ошибка: Максимальное значение температуры (" + String(maxValue) + " C) меньше минимального значения (" + String(minTemperature) + " C)";
+          bot.sendMessage(chat_id, errorResponse, "");
+        }
+      } else if (sensorType == "humidity") {
+        if (maxValue >= minHumidity) {
+          maxHumidity = maxValue;
+          String response = "Максимальное значение влажности установлено на " + String(maxHumidity) + " %";
+          bot.sendMessage(chat_id, response, "");
+        } else {
+          String errorResponse = "Ошибка: Максимальное значение влажности (" + String(maxValue) + " %) меньше минимального значения (" + String(minHumidity) + " %)";
+          bot.sendMessage(chat_id, errorResponse, "");
+        }
+      }
+    }
+
+    if ((text == "/pumpon") || (text == "pumpon")) {
+      if (!pumpBlocked) {
+        digitalWrite(pump, HIGH);
+        delay(500);
+        digitalWrite(pump, LOW);
+        bot.sendMessage(chat_id, "Насос включен на 0.5 сек", "");
+      } else {
+      bot.sendMessage(chat_id, "Влажность и так критически большая, я не могу выполнить вашу команду по соображениям безопасности", "");
+    }
+  }
+  
     if ((text == "/pumpoff") || (text == "pumpoff"))
     {
       digitalWrite(pump, LOW);
-      fill_solid( leds, NUM_LEDS, CRGB(0, 0, 0));
-      FastLED.show();
       bot.sendMessage(chat_id, "Насос выключен", "");
     }
     if ((text == "/windon") || (text == "windon"))
@@ -243,59 +475,123 @@ void handleNewMessages(int numNewMessages)
       digitalWrite(wind, LOW);
       bot.sendMessage(chat_id, "Вентилятор выключен", "");
     }
-    if ((text == "/light") || (text == "light"))
+    if ((text == "/light") || (text == "light") || (text == "включить свет"))
     {
       fill_solid( leds, NUM_LEDS, CRGB(255, 255, 255));
       FastLED.show();
       bot.sendMessage(chat_id, "Свет включен", "");
     }
-    if ((text == "/off") || (text == "off"))
+    if ((text == "/off") || (text == "off") || (text == "выключить свет"))
     {
       fill_solid( leds, NUM_LEDS, CRGB(0, 0, 0));
       FastLED.show();
       bot.sendMessage(chat_id, "Свет выключен", "");
     }
-    if ((text == "/color") || (text == "color"))
+    if ((text == "/color_rand") || (text == "color_rand")|| (text == "случайный цвет"))
     {
       fill_solid( leds, NUM_LEDS, CRGB(random(0, 255), random(0, 255), random(0, 255)));
       FastLED.show();
       bot.sendMessage(chat_id, "Включен случайный цвет", "");
     }
-    if (text == "/site") // отобразить кнопки в диалоге для перехода на сайт
-    {
-      bot.sendMessageWithInlineKeyboard(chat_id, "Выберите действие", "", keyboardJson1);
+    if (text == "/get_pass"){
+      bot.sendMessage(chat_id, password, "");
     }
+//
     if (text == "/options") // клавиатура для управления теплицей
     {
       String keyboardJson = "[[\"/light\", \"/off\"],[\"/color\",\"/sensors\"],[\"/pumpon\", \"/pumpoff\",\"/windon\", \"/windoff\"],[\"/open\",\"/close\"]]";
       bot.sendMessageWithReplyKeyboard(chat_id, "Выберите команду", "", keyboardJson, true);
-    }
+      }
 
-    if ((text == "/start") || (text == "start") || (text == "/help") || (text == "help")) // команда для вызова помощи
-    {
-      bot.sendMessage(chat_id, "Привет, " + from_name + "!", "");
-      bot.sendMessage(chat_id, "Я контроллер Йотик 32. Команды смотрите в меню слева от строки ввода", "");
-      String sms = "Команды:\n";
-      sms += "/options - пульт управления теплицей\n";
-      sms += "/site - перейти на сайт\n";
-      sms += "/photo - запостить фото\n";
-      sms += "/help - вызвать помощь\n";
-      bot.sendMessage(chat_id, sms, "Markdown");
-    }
-
-    if (text == "/open")
+    if ((text == "/open") || (text == "открыть форточку"))
     {
       myservo.write(100);
       bot.sendMessage(chat_id, "форточка открыта", "");
     }
-    if (text == "/close")
+    if ((text == "/close") || (text == "закрыть форточку"))
     {
       myservo.write(0);
       bot.sendMessage(chat_id, "форточка закрыта", "");
     }
+   if (text.startsWith("/color")&& text != "/color_rand") // обработка команды "/color {r} {g} {b}"
+    {
+      // Разбиваем сообщение на отдельные части по пробелам
+      char* cmd = strdup(text.c_str());
+      char* token = strtok(cmd, " ");
+      int count = 0;
+      int values[3];
+      while (token != NULL && count < 3) {
+        values[count] = atoi(token);
+        token = strtok(NULL, " ");
+        count++;
+    }
+      free(cmd);
+
+      if (count == 3) // Проверяем, что получили 3 значения цвета
+      {
+        int r = values[0];
+        int g = values[1];
+        int b = values[2];
+
+        // Проверяем диапазон значений цвета
+        if (r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255)
+        {
+          // Устанавливаем указанный цвет светодиодов
+          fill_solid(leds, NUM_LEDS, CRGB(r, g, b));
+          FastLED.show();
+          bot.sendMessage(chat_id, "Установлен указанный цвет", "");
+        }
+        else
+        {
+          bot.sendMessage(chat_id, "Неверный диапазон значений цвета. Используйте значения от 0 до 255.", "");
+        }
+      }
+      else
+      {
+        bot.sendMessage(chat_id, "Неверный формат команды. Используйте: /color {r} {g} {b}", "");
+      }
+   }
+
+   if (text == "/get_user")
+   {
+    sendUserArray(chat_id.toInt());
+    }
+   if (text.startsWith("/command_name "))
+   {
+    String commandPrefix = "/command_name ";
+    String name_command = text.substring(commandPrefix.length());
+    String message = "супер, теперь название команды это " + name_command;
+    bot.sendMessage(String(chat_id), message, ""); 
+    }
+   if (text.startsWith("/new_pass "))
+   {
+    String commandPrefix = "/new_pass ";
+    String new_pass = text.substring(commandPrefix.length());
+    //
+    password = new_pass;
+    String message = "Cупер, теперь пароль на бота: " + new_pass;
+    bot.sendMessage(chat_id, message, "");
+    clearUsers();
+    }
+    if (text.startsWith("/user_log_out "))
+   {
+    String commandPrefix = "/user_log_out ";
+    String log_out_id = text.substring(commandPrefix.length());
+    removeUser(log_out_id.toInt());
+    }
+    if (text == "/log_out"){
+      removeUser(chat_id.toInt());
+      bot.sendMessage(chat_id, "Вы успешно вышли из своего аккаунта", "");
+    }
+  if (text == "/alina_ai"){
+    String mess = "данная функция недоступна, мы не успели её реализовать";//String(alina_ai()).c_str();
+    bot.sendMessage(String(chat_id), mess, "");
+  }
+  }else{
+    bot.sendMessage(String(chat_id), "Вы не авторизованы, вам доступны лишь некоторые команды, для получения доступа ко всему функционалу авторизуйтесь \n(как это сделать вам расскажет @phoenix0757)", "");
   }
 }
-
+}
 
 
 void loop() // вызываем функцию обработки сообщений через определенный период
@@ -303,14 +599,13 @@ void loop() // вызываем функцию обработки сообщен
   if (millis() - bot_lasttime > BOT_MTBS)
   {
     int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
-
     while (numNewMessages)
     {
       Serial.println("got response");
       handleNewMessages(numNewMessages);
       numNewMessages = bot.getUpdates(bot.last_message_received + 1);
     }
-
-    bot_lasttime = millis();
+    checkSensorValues();
+    unsigned long bot_lasttime = millis();  
   }
 }
